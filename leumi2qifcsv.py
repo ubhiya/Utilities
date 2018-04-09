@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+﻿#!/usr/bin/env python
 # -*-coding=utf-8 -*-
 # -*- coding: utf-8 -*-
 '''
@@ -13,6 +13,7 @@ import argparse
 import os.path
 import codecs
 from datetime import datetime
+import re
 
 #
 # convert date of the form 15/07/15  ---> 2015/07/15
@@ -125,10 +126,26 @@ def process_credit(input_filename, output_filename):
         #
         # the first row i nthe table may be a header row without values (td) so row_stripped will be empty
         #
-        # Both of these cases could be avoided if we used better filters in the find/findAll functions 
+        # Both of these cases could be avoided if we used better filters in the find/findAll functions
+        print(row_stripped)
         if len(row_stripped) > 0 and not row_stripped['date'] == '': 
             row_qif = {}
-            row_qif['D'] = reformat_date(row_stripped['date'])                     # date
+
+            # complex date handling
+            # if dealing with monthly payments then use the paydate (date of debit)
+            # otherwise just use the actual date of purchase
+            if ("תשלום" in row_stripped['memo']):
+                deferred_paydate = row_stripped['paydate']
+                # regular expression match to string of form 03/11/18
+                match = re.search(r'\d{2}/\d{2}/\d{2}', deferred_paydate)
+                if match is not None:
+                    row_qif['D'] = reformat_date(match.group())
+                else:
+                    print('Could not deduce date from deffered payment - using simple date!')
+                    row_qif['D'] = reformat_date(row_stripped['date'])
+            else:
+                row_qif['D'] = reformat_date(row_stripped['date'])                     # date
+
             row_qif['P'] = reformat_hebrew(row_stripped['payee'])                   # payee/description
             #row_qif['M'] = row_stripped['memo']                                   # memo/description (not used in credit/debit
             # invert the amount since it is a debit
