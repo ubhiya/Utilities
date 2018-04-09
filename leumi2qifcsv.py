@@ -21,20 +21,60 @@ def reformat_date(date_string):
     day = timepoint.date()
 
     return day.isoformat()
-     
+
+def reformat_hebrew(hebrew_string):
+    # remove "
+    return hebrew_string.replace("\"", "")
+
+def split_filename(filepath):
+    import os
+    path,filename_w_ext = os.path.split(filepath)
+    #inputFilepath = 'path/to/file/foobar.txt'
+    #filename_w_ext = os.path.basename(filepath)
+    filename, file_extension = os.path.splitext(filename_w_ext)
+    # filename = foobar
+    # file_extension = .txt
+
+    # path, filename = os.path.split(path / to / file / foobar.txt)
+    # path = path/to/file
+    # filename = foobar.txt
+
+    return path,filename
+
 def write_qif(file_name, qif_type, table):
     try:
         with open(file_name, 'w', encoding="utf-8") as f:
             f.write(qif_type + '\n')
             for row in table:
                 for key in row:
-                    f.write('{}{}\n'.format(key,row[key]))                                   
+                    f.write('{}{}\n'.format(key, row[key]))
                 f.write('^\n')
+
+    except IOError:
+        # 'File not found' error message.
+        print("File could not be opened")
+
+def write_csv(file_name, qif_type, table):
+    try:
+        with open(file_name, 'w', encoding="utf-8") as f:
+            #f.write(qif_type + '\n')
+            for row in table:
+                for key in row:
+                    f.write('{},'.format(row[key]))
+                f.write('\n')
                 
     except IOError:
         # 'File not found' error message.
         print("File could not be opened")            
-                  
+
+def write_output(file_name, qif_type, table):
+    path, filename = split_filename(file_name)
+
+    fname_qif = path + "\\" + filename + ".qif"
+    fname_csv = path + "\\" + filename + ".csv"
+    write_qif(fname_qif, qif_type, table)
+    write_csv(fname_csv, qif_type, table)
+
 def process_credit(input_filename, output_filename):
     """
     Testing writing qif for credit card
@@ -89,8 +129,8 @@ def process_credit(input_filename, output_filename):
         if len(row_stripped) > 0 and not row_stripped['date'] == '': 
             row_qif = {}
             row_qif['D'] = reformat_date(row_stripped['date'])                     # date
-            row_qif['P']= row_stripped['payee']                     # number
-            row_qif['M'] = row_stripped['memo']                     # memo or description
+            row_qif['P'] = reformat_hebrew(row_stripped['payee'])                   # payee/description
+            #row_qif['M'] = row_stripped['memo']                                   # memo/description (not used in credit/debit
             # invert the amount since it is a debit
             # figures like 3,000.00 are converted to 3000.00 (should be done using locale)
             row_qif['U'] = -1 * float(row_stripped['debit'].replace(',',''))              # amount (non-standard qif)
@@ -98,8 +138,8 @@ def process_credit(input_filename, output_filename):
             
                 
             clean_table.append(row_qif)
-              
-    write_qif(output_filename, "!Type:CCard", clean_table)
+
+    write_output(output_filename, "!Type:CCard", clean_table)
     
     sys.stdout = stdout
     
@@ -161,7 +201,7 @@ def process_bank(soup, output_filename):
             row_qif = {}
             row_qif['D'] = reformat_date(row_stripped['date'])      # date
             row_qif['N']= row_stripped['number']                    # number
-            row_qif['M'] = row_stripped['memo']                     # memo or description
+            row_qif['M'] = reformat_hebrew(row_stripped['memo'])    # memo or description
             
         # bank table has separate columns for debit and credit
         # need to invert the debit amount and then remove separate debit/credit to create a single figure
@@ -175,7 +215,7 @@ def process_bank(soup, output_filename):
                 
             clean_table.append(row_qif)
               
-    write_qif(output_filename, "!Type:Bank", clean_table)
+    write_output(output_filename, "!Type:Bank", clean_table)
        
     sys.stdout = stdout
             
