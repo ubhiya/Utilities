@@ -1,0 +1,44 @@
+# environment
+#
+# This configuration file defines a number of environment variables to set/alter
+# during GnuCash startup.
+#
+# The contents of this file is overwritten with each gnucash update.
+# If you want to add your own variables to the environment or wish
+# to override what gets set in this file please create a new file
+# named "environment.local" next to this one with the same structure:
+#
+# [Variables]
+# VAR_X=value_x
+# ....
+#
+#
+# Both files use a very simple syntax:
+# <variable_name>=<variable_value>
+#
+# You can refer to existing environment variables in the new value by
+# enclosing it in {}, for example
+# NEW_VARIABLE={OLD_VARIABLE}_something
+#
+# When adding variables that hold a collection of directories (path variables),
+# always use ';' to separate the directories. GnuCash will replace these with
+# the proper separator for your operating system. For example:
+# PATH=/some/extra/path;{PATH}
+#
+# Finally, GnuCash exports a number of environment variables itself you can use
+# here as you see fit. They are read only. GnuCash will ignore any changes you
+# make to them. These variables are:
+# GNC_HOME the directory where GnuCash was installed. This is the base
+#          directory of all the other directories below
+# GNC_BIN  the directory where the GnuCash executable resides. This is
+#          equivalent to {GNC_HOME}/bin
+# GNC_LIB  the directory where the GnuCash private libraries reside. This is
+#          equivalent to {GNC_HOME}/lib/gnucash
+# GNC_DATA the directory where GnuCash specific additional data is stored,
+#          equivalent to {GNC_HOME}/share/gnucash
+# GNC_CONF the directory where GnuCash configuration files are stored,
+#          equivalent to {GNC_HOME}/etc/gnucash
+# SYS_LIB  the directory where the GnuCash public libraries reside. This is
+#          equivalent to {GNC_HOME}/lib
+[Variables]
+ALPHAVANTAGE_API_KEY=50MOIPM8TSOZJWTW
