@@ -48,17 +48,20 @@ if __name__ == "__main__":
                 if len(index_list) > 0:
                     index = index_list[0]
                     quote = quotes.loc[index]['2. price']  # Series from column
+                    date = quotes.loc[index]['4. timestamp']
                 else:
                     try:
-                        quote = stockquotes.get_quote(symbol, exchange)
+                        quote,date = stockquotes.get_quote(symbol, exchange)
                     except KeyError:
                         print('QUOTE UNAVAILABLE - UNCHANGED', end=':\t')
                         quote = stockData[symbol]['price'] #NOTE - UNCHANGED
+                        date = stockData[symbol]['price']
 
             else:
-                quote = stockquotes.get_quote(symbol, exchange)
+                quote,date = stockquotes.get_quote(symbol, exchange)
 
             stockData[symbol]['price'] = quote
+            stockData[symbol]['date'] = date
 
         print(stockData[symbol]['price'])
         time.sleep(0.25)

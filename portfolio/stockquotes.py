@@ -83,8 +83,9 @@ def get_quote_tase(symbol):
     data=json.loads(html.decode('utf-8'))
 
     closerate = data['Data']['MarketData']['Daily']['CloseRate']
+    date = data['Data']['MarketData']['Daily']['TradeDate']
 
-    return closerate
+    return closerate,date
 
 def get_quotes(symbol_list, exchange):
     # NOTE: not all symbols supported in a batch quote so returned list
@@ -101,7 +102,7 @@ def get_quotes(symbol_list, exchange):
 
 
 def get_quote(symbol, exchange):
-
+    date = None
     quote = None
     N = 3
     n_tries = 0
@@ -111,7 +112,7 @@ def get_quote(symbol, exchange):
             if exchange == 'GOOG':
                 quote = get_quote_alphavantage(symbol)
             elif exchange == 'TASE':
-                quote = get_quote_tase(symbol)
+                quote,date = get_quote_tase(symbol)
             else:
                 raise Exception("option does not exist")
         except:
@@ -119,7 +120,7 @@ def get_quote(symbol, exchange):
             time.sleep(10)
         
 
-    return quote
+    return quote,date
 
 def get_exchange_rate(currency='USD'):
     add = "http://externalapi.bizportal.co.il/Mobile/GetExchangeRates?Token=USD"

@@ -20,14 +20,14 @@ def read(filename):
         symbol  = sheet['C' + str(row)].value
         currency = sheet['G' + str(row)].value
         exchange = sheet['L' + str(row)].value
-    
         price = sheet['H' + str(row)].value
+        date = sheet['J' + str(row)].value
         
         # Make sure the key for this symbol exists.
         #stockData.setdefault(symbol, {})
         # Make sure the key for this county in this state exists.
         if symbol not in stockData and symbol is not None:
-            stockData[symbol] = {'currency': currency, 'exchange': exchange, 'price':price}
+            stockData[symbol] = {'currency': currency, 'exchange': exchange, 'price': price, 'date': date}
             #stockData[symbol].setdefault(symbol, {'currency': 0, 'pop': 0})
             
     return stockData
@@ -63,6 +63,7 @@ def write(filepath, stockData, exchange_rate):
                 print('Price not changed!')
             else:
                 sheet['H' + str(row)] = stockData[symbol]['price']
+                print('Need to update dates') #sheet['J' + str(row)] = stockData[symbol]['date']
     
     if exchange_rate is not None:
         sheet = wb.get_sheet_by_name('constants')
