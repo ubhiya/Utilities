@@ -24,17 +24,45 @@ if __name__ == "__main__":
 
     # read the current stock data
     stockData = readexcel.read(filename)
-    
+
+
+    # create tuple of symbols to query in one batch - foreign exchanges only google/alphavantage
+    symbol_list = []
+    for symbol in stockData:
+        exchange = stockData[symbol]['exchange']
+        if exchange == 'GOOG':
+            symbol_list.append(symbol)
+
+    # prefetch all quotes for symbols that alphavantage supports.
+    quotes = stockquotes.get_quotes(symbol_list, 'GOOG')
+
+
     # update stock data with current prices
     for symbol in stockData:
-        print(symbol)
+        print(symbol, end=':\t')
         exchange = stockData[symbol]['exchange']
 
         if exchange != 'manual':
-            quote = stockquotes.get_quote(symbol, exchange)
+            if exchange == 'GOOG': # quotes already retrieved (see above)
+                index_list = quotes.index[quotes['1. symbol'] == symbol].tolist()
+                if len(index_list) > 0:
+                    index = index_list[0]
+                    quote = quotes.loc[index]['2. price']  # Series from column
+                else:
+                    try:
+                        quote = stockquotes.get_quote(symbol, exchange)
+                    except KeyError:
+                        print('QUOTE UNAVAILABLE - UNCHANGED', end=':\t')
+                        quote = stockData[symbol]['price'] #NOTE - UNCHANGED
+
+            else:
+                quote = stockquotes.get_quote(symbol, exchange)
+
             stockData[symbol]['price'] = quote
-            print(stockData[symbol]['price'])
-            time.sleep(0.25)
+
+        print(stockData[symbol]['price'])
+        time.sleep(0.25)
+
 
     exchange_rate = stockquotes.get_exchange_rate('USD')
     

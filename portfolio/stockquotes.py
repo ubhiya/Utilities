@@ -13,6 +13,8 @@ import json, time
 
 from googlefinance.client import get_closing_data
 
+import os
+
 # http://www.hasolidit.com/kehila/threads/%D7%9E%D7%9E%D7%A9%D7%A7-api-%D7%9C%D7%A9%D7%9C%D7%99%D7%A4%D7%AA-%D7%A0%D7%AA%D7%95%D7%A0%D7%99%D7%9D-%D7%9E%D7%94%D7%91%D7%95%D7%A8%D7%A1%D7%94.4251/page-6
 
 
@@ -32,6 +34,25 @@ http://www.hasolidit.com/kehila/threads/%D7%9E%D7%9E%D7%A9%D7%A7-api-%D7%9C%D7%A
 #    data = json.loads(url.read().decode())
 #    print(data)
 
+
+from alpha_vantage.timeseries import TimeSeries
+
+def get_quote_alphavantage(symbol):
+    ts = TimeSeries(key=os.getenv('ALPHAVANTAGE_KEY'))
+
+    try:
+        # Get json object with the intraday data and another with  the call's metadata
+        data, meta_data = ts.get_intraday(symbol, interval='60min', outputsize='compact')
+        #data, meta_data = ts.get_daily(symbol, outputsize='full')
+
+        lastprice = data[meta_data['3. Last Refreshed']]['4. close']
+
+    except KeyError:
+        print('KeyError')
+        raise KeyError
+
+
+    return lastprice
 
 
 def get_quote_google(symbol):
@@ -65,6 +86,20 @@ def get_quote_tase(symbol):
 
     return closerate
 
+def get_quotes(symbol_list, exchange):
+    # NOTE: not all symbols supported in a batch quote so returned list
+    # may contain less than requested.
+    if exchange != 'GOOG':
+        raise RuntimeError('only GOOG is supported for a batch query')
+
+    ts = TimeSeries(key=os.getenv('ALPHAVANTAGE_KEY'))
+    ts.output_format = 'pandas'
+    data, meta_data = ts.get_batch_stock_quotes(symbols=tuple(symbol_list))
+
+    # data is a pandas dataframe. each row has columns: 1.timestamp 2.symbol 3.price
+    return data
+
+
 def get_quote(symbol, exchange):
 
     quote = None
@@ -74,14 +109,14 @@ def get_quote(symbol, exchange):
         n_tries = n_tries + 1
         try:
             if exchange == 'GOOG':
-                quote = get_quote_google(symbol)
+                quote = get_quote_alphavantage(symbol)
             elif exchange == 'TASE':
                 quote = get_quote_tase(symbol)
             else:
                 raise Exception("option does not exist")
         except:
             print('get_quote failed....retrying....')
-            time.sleep(3)
+            time.sleep(10)
         
 
     return quote
@@ -102,6 +137,11 @@ def get_exchange_rate(currency='USD'):
     
     
 if __name__ == "__main__":
+
+    for i in range(1000):
+        last = get_quote_alphavantage('MSFT')
+        print(last)
+
     last = get_quote_google('VNQ')
     print(last)
 
