@@ -18,9 +18,23 @@ def create_backup(filepath):
     os.rename(destpath,destpath+"_"+timeStamp)
 
 
+def file_to_open():
+    import tkinter
+    from tkinter.filedialog import askopenfilename
+
+    tkinter.Tk().withdraw()  # we don't want a full GUI, so keep the root window from appearing
+
+    # show an "Open" dialog box and return the path to the selected file
+    filename = askopenfilename(initialdir="./",
+                               title="Select file",
+                               filetypes=(("Ms-Excel files", "*.xls *.xlsx"), ("all files", "*.*")))
+    print(filename)
+
+    return filename
+
 if __name__ == "__main__":
     # execute only if run as a script
-    filename = "C:\\Users\\Stuart\\Dropbox\\test\\Portfolio.xlsx"
+    filename = file_to_open()  #"C:\\Users\\Stuart\\Dropbox\\test\\Portfolio.xlsx"
 
     # read the current stock data
     stockData = readexcel.read(filename)
