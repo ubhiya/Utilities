@@ -5,6 +5,7 @@
 Created on Jan 6, 2015
 
 @author: stuart
+requires: bs4, lxml
 '''
 
 from bs4 import BeautifulSoup
@@ -15,6 +16,19 @@ import codecs
 from datetime import datetime
 import re
 
+# adds a given number of months to given date string in the format of dd-mm-yyyy
+# and returns a date string
+def add_months_to_date(date_str, months_to_add):
+    from dateutil.relativedelta import relativedelta
+    date_obj = datetime.strptime(date_str, '%d/%m/%y')
+    new_date_obj = date_obj + relativedelta(months=+months_to_add)
+    return datetime.strftime(new_date_obj,'%d/%m/%y')
+
+# breaks a string containing INTEGERS and returns a list of integers
+# see https://www.tutorialspoint.com/How-to-extract-numbers-from-a-string-in-Python
+def extract_integers_from_string(str_containing_digits):
+    a = [int(s) for s in str_containing_digits.split() if s.isdigit()]
+    return a
 #
 # convert date of the form 15/07/15  ---> 2015/07/15
 def reformat_date(date_string):
@@ -128,7 +142,7 @@ def process_credit(input_filename, output_filename):
         #
         # Both of these cases could be avoided if we used better filters in the find/findAll functions
         print(row_stripped)
-        if len(row_stripped) > 0 and not row_stripped['date'] == '': 
+        if len(row_stripped) > 0 and not row_stripped['date'] == '':
             row_qif = {}
 
             # complex date handling
@@ -158,6 +172,82 @@ def process_credit(input_filename, output_filename):
 
     write_output(output_filename, "!Type:CCard", clean_table)
     
+    sys.stdout = stdout
+
+
+def process_credit_new(input_filename, output_filename):
+    """
+    writing qif for credit card
+    on 2019-02 bank leumi changed the format so this function replaces process_credit
+   """
+
+    # redirecting stdout to a file (debug.txt) because writing unicode to Windows console
+    # is not directlty supported (though it can be done it is coomplicated)
+    print("Debug information is logged to: 'debug.txt'")
+    stdout = sys.stdout
+    sys.stdout = open('debug.txt', 'w', encoding="utf-8")
+
+    # date memo number debit credit total
+    lookup = {
+        0: 'date',
+        1: 'payee',
+        2: 'total',
+        3: 'memo',
+        4: 'debit',
+    }
+
+    clean_table = []
+
+    # find the tag with name 'table' and whose attribute 'class' has a value of 'dataTable'
+    # in bs4 this works (for bs3 would need soup.find('table', {'class': 'dataTable'}) instead
+    table = soup.find('table', class_='dataTable')
+    #   print(table)
+    # a = [tr.find('td') for tr in soup.findAll('tr')]
+    for row in table.findAll('tr'):
+        # tr = table.findAll('tr', {'class': 'alternatingItem printItem ExtendedActivity_ForPrint'})
+        print("-------------------------------------------------------------------")
+        s = [text for text in row.stripped_strings]
+        print(s)
+
+        row_stripped = {}
+        idx = -1
+        for td in row.findAll('td'):
+            idx += 1
+            value = td.get_text("|", strip=True)
+            print(value)
+            row_stripped[lookup[idx]] = value
+
+        # the row may have an empty date (and some other fields because the last row in the table
+        # contains the total amount spent on the card and is irrelevant
+        #
+        # the first row in the table may be a header row without values (td) so row_stripped will be empty
+        #
+        # Both of these cases could be avoided if we used better filters in the find/findAll functions
+        print(row_stripped)
+        if len(row_stripped) > 2:
+            row_qif = {}
+
+            # complex date handling
+            # if dealing with monthly payments then use the paydate (date of debit)
+            # otherwise just use the actual date of purchase
+            if ("תשלום" in row_stripped['memo']):
+                month = extract_integers_from_string(row_stripped['memo'])
+                deferred_paydate = add_months_to_date(row_stripped['date'], month[0])
+                row_qif['D'] = reformat_date(deferred_paydate)
+            else:
+                row_qif['D'] = reformat_date(row_stripped['date'])  # date
+
+            row_qif['P'] = reformat_hebrew(row_stripped['payee'])  # payee/description
+            # row_qif['M'] = row_stripped['memo']                                   # memo/description (not used in credit/debit
+            # invert the amount since it is a debit
+            # figures like 3,000.00 are converted to 3000.00 (should be done using locale)
+            row_qif['U'] = -1 * float(row_stripped['debit'].replace(',', ''))  # amount (non-standard qif)
+            row_qif['T'] = row_qif['U']  # amount
+
+            clean_table.append(row_qif)
+
+    write_output(output_filename, "!Type:CCard", clean_table)
+
     sys.stdout = stdout
     
 def process_bank(soup, output_filename):
@@ -270,6 +360,10 @@ if __name__ == '__main__':
             elif 'DisplayCreditCardActivity.aspx' in form['action']:
                 print('Credit Card')
                 process_credit(args.infile, args.outfile)
+            elif 'DisplayCreditCardActivityNew.aspx' in form['action']:
+                # on 2019-02 bank leumi changed the format so this function replaces process_credit
+                print('Credit Card New')
+                process_credit_new(args.infile, args.outfile)
             else:
                 print(form['action'])
                 print(' is an unidentified statement type')
