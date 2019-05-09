@@ -11,8 +11,6 @@ except ImportError:  # python 2
     
 import json, time
 
-from googlefinance.client import get_closing_data
-
 import os
 
 # http://www.hasolidit.com/kehila/threads/%D7%9E%D7%9E%D7%A9%D7%A7-api-%D7%9C%D7%A9%D7%9C%D7%99%D7%A4%D7%AA-%D7%A0%D7%AA%D7%95%D7%A0%D7%99%D7%9D-%D7%9E%D7%94%D7%91%D7%95%D7%A8%D7%A1%D7%94.4251/page-6
@@ -56,6 +54,7 @@ def get_quote_alphavantage(symbol):
 
 
 def get_quote_google(symbol):
+    from googlefinance.client import get_closing_data
     # try different exchanges - not all symbols available on every exchange
     exchange = ["NYSE", "NYSEARCA", "NASDAQ", "OTCMKTS", "BATS"]
 	
