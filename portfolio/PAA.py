@@ -9,6 +9,7 @@ https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2759734
 """
 
 import numpy as np
+import pandas as pd
 
 # moving average period ie. lookback
 PERIOD = 10
@@ -24,33 +25,19 @@ print('protection factor: {0}'.format(protection_factor))
 print('lookback period  : {0}'.format(PERIOD))
 print('-------------------------------------------------')
 
-# raw data
-SPY=[2,3,4,5,6,7,8,9,8,7,6,5,4,3,2,1]
-GOG=[2,3,4,5,3,7,8,9,8,7,6,5,4,5,4,5]
-APL=[2,3,4,5,6,1,4,9,8,7,6,5,4,4,5,6]
-IBM=[2,3,4,5,6,7,8,9,8,2,2,2,1,3,2,1]
-
-
-# should be read in somehow
-TA_125 = [1356.0, 1305.0, 1323.0, 1358.0, 1358.0, 1402.6, 1484.0, 1478.0, 1447.0, 1463.0, 1328.0, 1402.0, 1421, 1410.0, 1459.0]
-TA_SME150 = [1038.0, 1000.6, 992.0, 981.8, 975.8, 957.4, 1017.3, 1034.3, 969.8, 977.0, 976.1, 946.9, 955, 967.7, 990.0]
-TA_TECH = [2660.0, 2545.0, 2499.0, 2599.0, 2621.0, 2770.0, 2759.3, 2789.0, 2637.0, 2615.0, 2299.0, 2636.0, 2636.0, 2679, 2693.0]
-TA_SP500 = [3694.4, 3578.8, 3597.3, 3707.5, 3689.4, 3826.1, 3948.2, 3953.8, 3680.6, 3748.0, 3428.0, 3662.0, 3801.0, 3855, 3998]
-TA_STOX50 = [3334.3, 3232.3, 3450.7, 3364.1, 3357.4, 3489.2, 3359.8, 3368.9, 3121.1, 3175.0, 2985.0, 3136.0, 3288.0, 3368, 3517]
-TA_NIKEI_YEN = [17220.0, 16940.0, 17820.0, 17530.0, 17700.0, 17830.0, 17770.0, 18400.0, 17290.0, 17610.0, 16480.0, 16680.0, 16790, 16860, 17430]
-
-TA_PROP = [523.9, 510.4, 511.7, 507.0, 507.9, 499.3, 526.6, 530.5, 512.2, 506.3, 477.3, 512.1, 532.2, 561.1, 585.2]
-TA_GOLD = [1083.0, 1103.4, 1110.7, 1102.0, 1075.0, 1050.0, 1033.5, 1009.5, 1062.8, 1080.0, 1127.4, 1124.0, 1118.0, 1098.5, 1081.0]
-TA_COMMOD = [691.5, 698.5, 750.6, 752.5, 767.2, 768.3, 763.5, 764.2, 755.2, 674.1, 636.0, 669.8, 675.2, 679.4, 687.7]
-
-TA_TELBOND20 = [332.8, 332.8, 334.2, 333.5, 335.4, 335.0, 338.6, 338.1, 334.6, 332.4, 330.4, 335.4, 338.7, 344.2, 346.41]
-TA_TELBOND_GROWTH = [3528.5, 3494.9, 3514.6, 3495.8, 3493.5, 3465.0, 3539.1, 3540.4, 3514.2, 3485.9, 3395.7, 3444.7, 3512.52, 3550.8, 3581]
-TA_BOND_LONG = [615.1, 622.3, 612.1, 614.9, 606.4, 605.8, 610.9, 608.7, 601.4, 598.9, 602.4, 616.1, 622.52, 630.0, 631.94]
-TA_TELBOND_LONG = [3712.0, 3727.8, 3694.7, 3683.1, 3651.8, 3598.4, 3664.6, 3671.4, 3636.0, 3637.3, 3564.4, 3616.3, 3650.14, 3699.7, 3725.16]
+filename = "C:\\Users\\Stuart\\Dropbox\\Finance\\data.xlsx"
+xl = pd.ExcelFile(filename)
+xl.sheet_names
+df = xl.parse("data")
+df.head()
 
 # "risk-free" or crash protection assets
 bonds = ['TA_TREASURY_LINK_5_10', 'TA_TREASURY_FIX_2_5']
 
+# "risk" part of portfolio
+# NOTE: symbols should be read from same excel file
+symbols = ['TA_125', 'TA_SME150', 'TA_TECH', 'TA_SP500', 'TA_STOX50', 'TA_NIKEI_YEN', 'TA_PROP',
+           'TA_GOLD', 'TA_COMMOD', 'TA_TELBOND20', 'TA_TELBOND_GROWTH', 'TA_BOND_LONG', 'TA_TELBOND_LONG']
 
 def moving_average(data_set, periods=3):
     weights = np.ones(periods) / periods
@@ -103,26 +90,10 @@ class Security(object):
         # calculate momentum
         self.momentum = momentum(self.data, self.price, period)
 
-
-portfolio_old = [Security('SPY', 'SPY', SPY, PERIOD),
-             Security('GOG', 'GOG', GOG, PERIOD),
-             Security('APL', 'APL', APL, PERIOD),
-             Security('IBM', 'IBM', IBM, PERIOD)]
-
-
-portfolio = [Security('TA_125', 'TA_125', TA_125, PERIOD),
-             Security('TA_SME150', 'TA_SME150', TA_SME150, PERIOD),
-             Security('TA_TECH', 'TA_TECH', TA_TECH, PERIOD),
-             Security('TA_SP500', 'TA_SP500', TA_SP500, PERIOD),
-             Security('TA_STOX50', 'TA_STOX50', TA_STOX50, PERIOD),
-             Security('TA_NIKEI_YEN', 'TA_NIKEI_YEN', TA_NIKEI_YEN, PERIOD),
-             Security('TA_PROP', 'TA_PROP', TA_PROP, PERIOD),
-             Security('TA_GOLD', 'TA_GOLD', TA_GOLD, PERIOD),
-             Security('TA_COMMOD', 'TA_COMMOD', TA_COMMOD, PERIOD),
-             Security('TA_TELBOND20', 'TA_TELBOND20', TA_TELBOND20, PERIOD),
-             Security('TA_TELBOND_GROWTH', 'TA_TELBOND_GROWTH', TA_TELBOND_GROWTH, PERIOD),
-             Security('TA_BOND_LONG', 'TA_BOND_LONG', TA_BOND_LONG, PERIOD),
-             Security('TA_TELBOND_LONG', 'TA_TELBOND_LONG', TA_TELBOND_LONG, PERIOD)]
+# build portfolio as list of Securitys
+portfolio = []
+for symbol in symbols:
+    portfolio.append(Security(symbol, symbol, df[symbol].to_list(), PERIOD))
 
 # sort by momentum with highest momentum first
 portfolio.sort(key=lambda x: x.momentum, reverse=True)
