@@ -18,10 +18,10 @@ def read(filename):
     for row in range(2, sheet.max_row + 1):
         # Each row in the spreadsheet has data for one census tract.
         symbol  = sheet['C' + str(row)].value
-        currency = sheet['G' + str(row)].value
+        currency = sheet['H' + str(row)].value
         exchange = sheet['L' + str(row)].value
-        price = sheet['H' + str(row)].value
-        date = sheet['J' + str(row)].value
+        price = sheet['I' + str(row)].value
+        date = sheet['K' + str(row)].value
         
         # Make sure the key for this symbol exists.
         #stockData.setdefault(symbol, {})
@@ -62,8 +62,8 @@ def write(filepath, stockData, exchange_rate):
             if stockData[symbol]['price'] is None:
                 print('Price not changed!')
             else:
-                sheet['H' + str(row)] = stockData[symbol]['price']
-                print('Need to update dates') #sheet['J' + str(row)] = stockData[symbol]['date']
+                sheet['I' + str(row)] = stockData[symbol]['price']
+                print('Need to update dates') #sheet['K' + str(row)] = stockData[symbol]['date']
     
     if exchange_rate is not None:
         sheet = wb.get_sheet_by_name('constants')
