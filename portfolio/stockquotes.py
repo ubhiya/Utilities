@@ -92,12 +92,51 @@ def get_quotes(symbol_list, exchange):
     if exchange != 'GOOG':
         raise RuntimeError('only GOOG is supported for a batch query')
 
-    ts = TimeSeries(key=os.getenv('ALPHAVANTAGE_KEY'))
-    ts.output_format = 'pandas'
-    data, meta_data = ts.get_batch_stock_quotes(symbols=tuple(symbol_list))
+    import asyncio
+    from alpha_vantage.async_support.timeseries import TimeSeries
+    import time
+    import pandas as pd
 
+    async def get_data(symbol):
+        ts = TimeSeries(key=os.getenv('ALPHAVANTAGE_API_KEY'))
+        ts.output_format = 'pandas'
+        data, _ = await ts.get_quote_endpoint(symbol)
+        await ts.close()
+        return data
+
+    loop = asyncio.get_event_loop()
+    tasks = [get_data(symbol) for symbol in symbol_list]
+
+    # create empty list of results
+    result_list = []
+
+    # divide list of tasks into chunks of 5 because alphavantage limits free account
+    # to 5 stock requests per minute
+    chunks = [tasks[x:x + 5] for x in range(0, len(tasks), 5)]
+
+    for chunk in chunks:
+        start_time = time.time()
+        group1 = asyncio.gather(*chunk)
+        results = loop.run_until_complete(group1)
+        result_list.extend(results)
+        execution_time = time.time() - start_time
+        # print(results)
+        # only allowed 5 quotes per minute so need to wait.
+        if execution_time < 60:
+            time.sleep(61 - execution_time)
+
+    # convert result_list into format expected - a pandas dataframe. each row has columns: 1.timestamp 2.symbol 3.price
+    #   create dataframe from list
+    df = pd.concat(result_list) # create dataframe from list
+    #   remove columns not needed
+    df.drop(['02. open', '03. high', '04. low', '06. volume', '08. previous close', '09. change', '10. change percent'], axis=1)
+    df.rename(columns={'01. symbol': 'symbol', '05. price': 'price','07. latest trading day': 'latest trading day'}, inplace=True)
+    #   reorder columns
+    df = df[['latest trading day', 'symbol', 'price']]
+    #   reset the row indices so that they are 0,1,2.... and not anything else
+    df = df.reset_index(drop=True)
     # data is a pandas dataframe. each row has columns: 1.timestamp 2.symbol 3.price
-    return data
+    return df
 
 
 def get_quote(symbol, exchange):

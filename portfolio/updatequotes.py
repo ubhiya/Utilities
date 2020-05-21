@@ -58,11 +58,12 @@ if __name__ == "__main__":
 
         if exchange != 'manual':
             if exchange == 'GOOG': # quotes already retrieved (see above)
-                index_list = quotes.index[quotes['1. symbol'] == symbol].tolist()
+                # could just pull out the row containing the symbol of interest using r = quotes.loc[quotes['symbol'] == symbol]
+                index_list = quotes.index[quotes['symbol'] == symbol].tolist()
                 if len(index_list) > 0:
                     index = index_list[0]
-                    quote = quotes.loc[index]['2. price']  # Series from column
-                    date = quotes.loc[index]['4. timestamp']
+                    quote = quotes.loc[index]['price']  # Series from column
+                    date = quotes.loc[index]['latest trading day']
                 else:
                     try:
                         quote,date = stockquotes.get_quote(symbol, exchange)
