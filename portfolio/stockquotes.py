@@ -121,9 +121,12 @@ def get_quotes(symbol_list, exchange):
         result_list.extend(results)
         execution_time = time.time() - start_time
         # print(results)
-        # only allowed 5 quotes per minute so need to wait.
-        if execution_time < 60:
-            time.sleep(61 - execution_time)
+        # only allowed 5 quotes per minute so need to wait. while waiting print dots to show we're not stuck
+        while execution_time < 60:
+            print(".", end ="")
+            execution_time = time.time() - start_time
+            time.sleep(1.5)
+        print(".")
 
     # convert result_list into format expected - a pandas dataframe. each row has columns: 1.timestamp 2.symbol 3.price
     #   create dataframe from list

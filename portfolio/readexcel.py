@@ -12,8 +12,13 @@ def read(filename):
     wb = openpyxl.load_workbook(filename, read_only=True)
     sheet = wb.get_sheet_by_name('Portfolio')
     stockData = {}
-    
-    # TODO: Fill in countyData with each county's population and tracts.
+
+    assert (sheet['C1'].value == 'Symbol'), "Symbol is not in expected column"
+    assert (sheet['H1'].value == 'Curr.'), "Currency is not in expected column"
+    assert (sheet['L1'].value == 'Type'), "Stock Exchange/Type is not in expected column"
+    assert (sheet['I1'].value == 'Current Price'), "Current Price is not in expected column"
+    assert (sheet['K1'].value == 'Date'), "Date is not in expected column"
+
     print('Reading rows...')
     for row in range(2, sheet.max_row + 1):
         # Each row in the spreadsheet has data for one census tract.
