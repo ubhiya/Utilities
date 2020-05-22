@@ -36,7 +36,7 @@ http://www.hasolidit.com/kehila/threads/%D7%9E%D7%9E%D7%A9%D7%A7-api-%D7%9C%D7%A
 from alpha_vantage.timeseries import TimeSeries
 
 def get_quote_alphavantage(symbol):
-    ts = TimeSeries(key=os.getenv('ALPHAVANTAGE_KEY'))
+    ts = TimeSeries(key=os.getenv('ALPHAVANTAGE_API_KEY'))
 
     try:
         # Get json object with the intraday data and another with  the call's metadata

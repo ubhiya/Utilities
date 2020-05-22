@@ -70,7 +70,7 @@ if __name__ == "__main__":
                     except KeyError:
                         print('QUOTE UNAVAILABLE - UNCHANGED', end=':\t')
                         quote = stockData[symbol]['price'] #NOTE - UNCHANGED
-                        date = stockData[symbol]['price']
+                        date = stockData[symbol]['date']
 
             else:
                 quote,date = stockquotes.get_quote(symbol, exchange)

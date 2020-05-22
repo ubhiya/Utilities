@@ -51,7 +51,11 @@ def write(filepath, stockData, exchange_rate):
         raise Exception('Unsupported file type')
        
     sheet = wb.get_sheet_by_name('Portfolio')
-    
+
+    # get todays date
+    from datetime import date
+    today = date.today()
+
     # update rows with the new stock data
     print('Writing rows...')
     for row in range(2, sheet.max_row + 1):
@@ -68,8 +72,8 @@ def write(filepath, stockData, exchange_rate):
                 print('Price not changed!')
             else:
                 sheet['I' + str(row)] = stockData[symbol]['price']
-                print('Need to update dates') #sheet['K' + str(row)] = stockData[symbol]['date']
-    
+                sheet['K' + str(row)] = today # TODO use actual stock retrival date eg. stockData[symbol]['date']
+
     if exchange_rate is not None:
         sheet = wb.get_sheet_by_name('constants')
         sheet['B1'].value = exchange_rate
