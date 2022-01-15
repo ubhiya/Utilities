@@ -7,6 +7,7 @@ Created on Sun Jun 11 16:44:33 2017
 
 import readexcel, stockquotes
 import time, os, shutil, datetime
+import pandas as pd
 
 def create_backup(filepath):
     destpath = filepath + '.bak'
@@ -32,6 +33,19 @@ def file_to_open():
 
     return filename
 
+def create_symbol_list(stockData, exchange_required):
+    # create tuple of symbols to query in one batch - foreign exchanges only google/alphavantage
+    symbol_list = []
+    for symbol in stockData:
+        exchange = stockData[symbol]['exchange']
+        if exchange == exchange_required:
+            symbol_list.append(symbol)
+
+    symbol_list = list(set(symbol_list))  # create unique list by converting to set and back to list (order not preserved)
+
+    return symbol_list
+
+
 if __name__ == "__main__":
     # execute only if run as a script
     filename = file_to_open()  #"C:\\Users\\Stuart\\Dropbox\\test\\Portfolio.xlsx"
@@ -39,41 +53,34 @@ if __name__ == "__main__":
     # read the current stock data
     stockData = readexcel.read(filename)
 
+    # create tuple of unique symbols to query in one batch - and prefetch all quotes for symbols
+    symbol_list_foreign = create_symbol_list(stockData, 'GOOG')
+    symbol_list_tase = create_symbol_list(stockData, 'TASE')
+    quotes_foreign = stockquotes.get_quotes(symbol_list_foreign, 'GOOG')
+    quotes_tase = stockquotes.get_quotes_tase(symbol_list_tase)
 
-    # create tuple of symbols to query in one batch - foreign exchanges only google/alphavantage
-    symbol_list = []
-    for symbol in stockData:
-        exchange = stockData[symbol]['exchange']
-        if exchange == 'GOOG':
-            symbol_list.append(symbol)
-
-    # prefetch all quotes for symbols that alphavantage supports.
-    quotes = stockquotes.get_quotes(symbol_list, 'GOOG')
-
+    # create one dataframe for all pre-fetched symbols
+    quotes = pd.concat([quotes_foreign, quotes_tase], ignore_index=True)
 
     # update stock data with current prices
     for symbol in stockData:
         print(symbol, end=':\t')
         exchange = stockData[symbol]['exchange']
 
-        if exchange != 'manual':
-            if exchange == 'GOOG': # quotes already retrieved (see above)
-                # could just pull out the row containing the symbol of interest using r = quotes.loc[quotes['symbol'] == symbol]
-                index_list = quotes.index[quotes['symbol'] == symbol].tolist()
-                if len(index_list) > 0:
-                    index = index_list[0]
-                    quote = quotes.loc[index]['price']  # Series from column
-                    date = quotes.loc[index]['latest trading day']
-                else:
-                    try:
-                        quote,date = stockquotes.get_quote(symbol, exchange)
-                    except KeyError:
-                        print('QUOTE UNAVAILABLE - UNCHANGED', end=':\t')
-                        quote = stockData[symbol]['price'] #NOTE - UNCHANGED
-                        date = stockData[symbol]['date']
-
+        if (exchange == 'TASE') or (exchange == 'GOOG'):  # quotes already retrieved (see above)
+            # could just pull out the row containing the symbol of interest using r = quotes.loc[quotes['symbol'] == symbol]
+            index_list = quotes.index[quotes['symbol'] == symbol].tolist()
+            if len(index_list) > 0:
+                index = index_list[0]
+                quote = quotes.loc[index]['price']  # Series from column
+                date = quotes.loc[index]['latest trading day']
             else:
-                quote,date = stockquotes.get_quote(symbol, exchange)
+                try:
+                    quote, date = stockquotes.get_quote(symbol, exchange)
+                except KeyError:
+                    print('QUOTE UNAVAILABLE - UNCHANGED', end=':\t')
+                    quote = stockData[symbol]['price']  # NOTE - UNCHANGED
+                    date = stockData[symbol]['date']
 
             stockData[symbol]['price'] = quote
             stockData[symbol]['date'] = date

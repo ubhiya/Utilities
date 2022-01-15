@@ -8,10 +8,14 @@ try:
     from urllib.request import Request, urlopen
 except ImportError:  # python 2
     from urllib2 import Request, urlopen
-    
+
 import json, time
 
 import os
+
+import tase
+
+tase_quoter = tase.Tase()
 
 # http://www.hasolidit.com/kehila/threads/%D7%9E%D7%9E%D7%A9%D7%A7-api-%D7%9C%D7%A9%D7%9C%D7%99%D7%A4%D7%AA-%D7%A0%D7%AA%D7%95%D7%A0%D7%99%D7%9D-%D7%9E%D7%94%D7%91%D7%95%D7%A8%D7%A1%D7%94.4251/page-6
 
@@ -25,15 +29,16 @@ http://externalapi.bizportal.co.il/Mobile/help
 http://www.hasolidit.com/kehila/threads/%D7%9E%D7%9E%D7%A9%D7%A7-api-%D7%9C%D7%A9%D7%9C%D7%99%D7%A4%D7%AA-%D7%A0%D7%AA%D7%95%D7%A0%D7%99%D7%9D-%D7%9E%D7%94%D7%91%D7%95%D7%A8%D7%A1%D7%94.4251/page-5#post-104768
 """
 
-#add = 'https://servicesm.tase.co.il/mayainterfaces/api/CompanyData/?CompanyId=000604'
-#add = 'https://servicesm.tase.co.il/taseinterfaces/api/StockData/?StockId=00604611'
+# add = 'https://servicesm.tase.co.il/mayainterfaces/api/CompanyData/?CompanyId=000604'
+# add = 'https://servicesm.tase.co.il/taseinterfaces/api/StockData/?StockId=00604611'
 
-#with urllib.request.urlopen(add) as url:
+# with urllib.request.urlopen(add) as url:
 #    data = json.loads(url.read().decode())
 #    print(data)
 
 
 from alpha_vantage.timeseries import TimeSeries
+
 
 def get_quote_alphavantage(symbol):
     ts = TimeSeries(key=os.getenv('ALPHAVANTAGE_API_KEY'))
@@ -41,14 +46,13 @@ def get_quote_alphavantage(symbol):
     try:
         # Get json object with the intraday data and another with  the call's metadata
         data, meta_data = ts.get_intraday(symbol, interval='60min', outputsize='compact')
-        #data, meta_data = ts.get_daily(symbol, outputsize='full')
+        # data, meta_data = ts.get_daily(symbol, outputsize='full')
 
         lastprice = data[meta_data['3. Last Refreshed']]['4. close']
 
     except KeyError:
         print('KeyError')
         raise KeyError
-
 
     return lastprice
 
@@ -57,7 +61,7 @@ def get_quote_google(symbol):
     from googlefinance.client import get_closing_data
     # try different exchanges - not all symbols available on every exchange
     exchange = ["NYSE", "NYSEARCA", "NASDAQ", "OTCMKTS", "BATS"]
-	
+
     for e in exchange:
         params = [{'q': symbol, 'x': e, }]
         # x is the exchange - Dow Jones ("INDEXDJX"), NYSE COMPOSITE ("INDEXNYSEGIS"), S&P 500 ("INDEXSP")
@@ -65,26 +69,40 @@ def get_quote_google(symbol):
         # get closing data for last month and then select the last known price
         period = "1M"
         df = get_closing_data(params, period)
-		
+
         if df.empty == False:
-        # note: df contains both last price and date
-			# iloc[-1] returns the last element in the list
-            #print(df)
+            # note: df contains both last price and date
+            # iloc[-1] returns the last element in the list
+            # print(df)
             lastprice = df[symbol].iloc[-1]
             return lastprice
-    
+
+
 def get_quote_tase(symbol):
-    add = 'https://servicesm.tase.co.il/taseinterfaces/api/StockData/?StockId='
-    add = add + symbol
+    closing_price, date = tase_quoter.get_quote_latest(symbol)
+    print(closing_price)
+    print(date)
 
-    html = urlopen(add).read()#urllib.request.urlopen(add).read() # this is json
-    #print(type(html))
-    data=json.loads(html.decode('utf-8'))
+    # convert date from a datetime obj to a string of the form YYYY-mm-dd like (same as from alphavantage)
+    date = date.strftime('%Y-%m-%d')
+    return closing_price, date
 
-    closerate = data['Data']['MarketData']['Daily']['CloseRate']
-    date = data['Data']['MarketData']['Daily']['TradeDate']
 
-    return closerate,date
+def get_quotes_tase(symbol_list):
+    symbol_list = list(set(symbol_list))  # create unique list by converting to set and back to list (order not preserved)
+
+    import pandas as pd
+
+    # create empty list of results
+    df = pd.DataFrame(columns=['latest trading day', 'symbol', 'price'])
+
+    i = 0
+    for s in symbol_list:
+        quote, date = get_quote_tase(s)
+        df.loc[i] = [date, s, quote]
+        i = i+1
+
+    return df
 
 def get_quotes(symbol_list, exchange):
     # NOTE: not all symbols supported in a batch quote so returned list
@@ -123,17 +141,19 @@ def get_quotes(symbol_list, exchange):
         # print(results)
         # only allowed 5 quotes per minute so need to wait. while waiting print dots to show we're not stuck
         while execution_time < 60:
-            print(".", end ="")
+            print(".", end="")
             execution_time = time.time() - start_time
             time.sleep(1.5)
         print(".")
 
     # convert result_list into format expected - a pandas dataframe. each row has columns: 1.timestamp 2.symbol 3.price
     #   create dataframe from list
-    df = pd.concat(result_list) # create dataframe from list
+    df = pd.concat(result_list)  # create dataframe from list
     #   remove columns not needed
-    df.drop(['02. open', '03. high', '04. low', '06. volume', '08. previous close', '09. change', '10. change percent'], axis=1)
-    df.rename(columns={'01. symbol': 'symbol', '05. price': 'price','07. latest trading day': 'latest trading day'}, inplace=True)
+    df.drop(['02. open', '03. high', '04. low', '06. volume', '08. previous close', '09. change', '10. change percent'],
+            axis=1)
+    df.rename(columns={'01. symbol': 'symbol', '05. price': 'price', '07. latest trading day': 'latest trading day'},
+              inplace=True)
     #   reorder columns
     df = df[['latest trading day', 'symbol', 'price']]
     #   reset the row indices so that they are 0,1,2.... and not anything else
@@ -153,22 +173,22 @@ def get_quote(symbol, exchange):
             if exchange == 'GOOG':
                 quote = get_quote_alphavantage(symbol)
             elif exchange == 'TASE':
-                quote,date = get_quote_tase(symbol)
+                quote, date = get_quote_tase(symbol)
             else:
                 raise Exception("option does not exist")
         except:
             print('get_quote failed....retrying....')
             time.sleep(10)
-        
 
-    return quote,date
+    return quote, date
+
 
 def get_exchange_rate(currency='USD'):
     add = "http://externalapi.bizportal.co.il/Mobile/GetExchangeRates?Token=USD"
 
-    html = urlopen(add).read()#urllib.request.urlopen(add).read() # this is json
-    #print(type(html))
-    data=json.loads(html.decode('utf-8'))
+    html = urlopen(add).read()  # urllib.request.urlopen(add).read() # this is json
+    # print(type(html))
+    data = json.loads(html.decode('utf-8'))
 
     for k in data:
         if k['CurrencyCode'] == currency:
@@ -176,8 +196,7 @@ def get_exchange_rate(currency='USD'):
 
     return None
 
-    
-    
+
 if __name__ == "__main__":
 
     for i in range(1000):
@@ -195,19 +214,14 @@ if __name__ == "__main__":
 
     last = get_quote_google('INDA')
     print(last)
-	
+
     quotes = get_quote("IBM", 'GOOG')
     print(quotes)
 
     # execute only if run as a script
     cr = get_quote_tase('00604611')
 
-    a = {'symbol': '00604611', 'currency': 'ILS', 'skip':False}
+    a = {'symbol': '00604611', 'currency': 'ILS', 'skip': False}
     quote = get_quote('00604611', 'TASE')
-    
+
     print(quote)
-
-
-    
-
-
