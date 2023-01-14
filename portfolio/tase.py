@@ -5,6 +5,7 @@ import time
 from datetime import datetime, timedelta
 import requests
 
+from dateutil.parser import parse as datetime_parser
 
 class Tase:
 
@@ -74,6 +75,7 @@ class Tase:
         # returns latest known quotation for symbol
         # date = datetime.now()
         # return 2130, date
+        print(symbol)
 
         request = "/tase/prod/api/v1/securities-trading-data/last-updated?securityId="
         request = request + str(symbol)
@@ -91,9 +93,14 @@ class Tase:
         # Interface is burst-limited to one call per second
         time.sleep(1)
 
-        price = resp['getSecuritiesLastUpdate']['result'][0]['securityLastPrice']
-        date_string = resp['getSecuritiesLastUpdate']['result'][0]['date']
-        date_obj = datetime.strptime(date_string, '%Y-%m-%dT%H:%M:%S.%f')
+        date_obj = datetime.now()
+        try:
+            price = resp['getSecuritiesLastUpdate']['result'][0]['securityLastPrice']
+            date_string = resp['getSecuritiesLastUpdate']['result'][0]['date']
+            date_obj = datetime_parser(date_string)
+        except IndexError:
+            print(f"Price for {symbol} was not retrieved. Set to 0. Check if stock exists!!!")
+            price = 'not available'
 
         return price, date_obj
 

@@ -49,18 +49,32 @@ def create_symbol_list(stockData, exchange_required):
 if __name__ == "__main__":
     # execute only if run as a script
     filename = file_to_open()  #"C:\\Users\\Stuart\\Dropbox\\test\\Portfolio.xlsx"
+    filedir = os.path.dirname(filename)
 
     # read the current stock data
     stockData = readexcel.read(filename)
 
-    # create tuple of unique symbols to query in one batch - and prefetch all quotes for symbols
-    symbol_list_foreign = create_symbol_list(stockData, 'GOOG')
-    symbol_list_tase = create_symbol_list(stockData, 'TASE')
-    quotes_foreign = stockquotes.get_quotes(symbol_list_foreign, 'GOOG')
-    quotes_tase = stockquotes.get_quotes_tase(symbol_list_tase)
+    pickle_filename = os.path.join(filedir, "quotes-for-debug.pickle")
 
-    # create one dataframe for all pre-fetched symbols
-    quotes = pd.concat([quotes_foreign, quotes_tase], ignore_index=True)
+    # comment out the following line unless debugging.
+    # quotes = pd.read_pickle(pickle_filename)
+
+    try:
+        quotes
+    except NameError:
+        # quotes does not exist; need to create - will only exist if line above is commented out - used for debug
+
+        # create tuple of unique symbols to query in one batch - and prefetch all quotes for symbols
+        symbol_list_foreign = create_symbol_list(stockData, 'GOOG')
+        symbol_list_tase = create_symbol_list(stockData, 'TASE')
+        quotes_foreign = stockquotes.get_quotes(symbol_list_foreign, 'GOOG')
+        quotes_tase = stockquotes.get_quotes_tase(symbol_list_tase)
+
+        # create one dataframe for all pre-fetched symbols
+        quotes = pd.concat([quotes_foreign, quotes_tase], ignore_index=True)
+
+        quotes.to_pickle(pickle_filename)
+        # can read back for debug using quotes = pd.read_pickle(pickle_filename)
 
     # update stock data with current prices
     for symbol in stockData:
@@ -82,8 +96,13 @@ if __name__ == "__main__":
                     quote = stockData[symbol]['price']  # NOTE - UNCHANGED
                     date = stockData[symbol]['date']
 
-            stockData[symbol]['price'] = quote
-            stockData[symbol]['date'] = date
+            if quote == 'not available':  # quote can be set to "not available" if the quote could not be retrieved
+                print('QUOTE UNAVAILABLE - UNCHANGED', end=':\t')
+                quote = stockData[symbol]['price']  # NOTE - UNCHANGED
+                date = stockData[symbol]['date']
+            else:
+                stockData[symbol]['price'] = quote
+                stockData[symbol]['date'] = date
 
         print(stockData[symbol]['price'])
         time.sleep(0.25)
